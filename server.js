@@ -11,6 +11,12 @@ app.use(bodyParser.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public'))); // Serve HTML files
 
+// Request Logger Middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
+
 // Explicitly serve index.html for the root route
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

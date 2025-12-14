@@ -15,20 +15,34 @@ searchInput.addEventListener('input', async (e) => {
         return;
     }
 
-    const res = await fetch(`/api/search?q=${query}`);
-    const products = await res.json();
+    try {
+        console.log(`Searching for: ${query}`);
+        const res = await fetch(`/api/search?q=${query}`);
 
-    resultsBox.innerHTML = '';
-    if (products.length > 0) {
-        resultsBox.style.display = 'block';
-        products.forEach(prod => {
-            const div = document.createElement('div');
-            div.innerText = `${prod.name} - LKR ${prod.sellingPrice}`;
-            div.onclick = () => addToInvoice(prod);
-            resultsBox.appendChild(div);
-        });
-    } else {
-        resultsBox.style.display = 'none';
+        if (!res.ok) {
+            throw new Error(`Server error: ${res.status} ${res.statusText}`);
+        }
+
+        const products = await res.json();
+        console.log('Search results:', products);
+
+        resultsBox.innerHTML = '';
+        if (products.length > 0) {
+            resultsBox.style.display = 'block';
+            products.forEach(prod => {
+                const div = document.createElement('div');
+                div.innerText = `${prod.name} - LKR ${prod.sellingPrice}`;
+                div.onclick = () => addToInvoice(prod);
+                resultsBox.appendChild(div);
+            });
+        } else {
+            resultsBox.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Search failed:', error);
+        // Optional: Show error in UI
+        // resultsBox.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+        // resultsBox.style.display = 'block';
     }
 });
 
