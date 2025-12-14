@@ -3,12 +3,18 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const path = require('path');
 const Product = require('./models/Product');
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
-app.use(express.static('public')); // Serve HTML files
+app.use(express.static(path.join(__dirname, 'public'))); // Serve HTML files
+
+// Explicitly serve index.html for the root route
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
