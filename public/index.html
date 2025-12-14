@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HN Electronics - Invoice</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Libraries for PDF and Image export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+</head>
+
+<body>
+
+    <div class="nav">
+        <a href="/">Create Invoice</a>
+        <a href="/admin.html">Manage Products</a>
+    </div>
+
+    <div class="controls">
+        <div class="search-box">
+            <input type="text" id="productSearch" placeholder="Search product..." autocomplete="off">
+            <div id="searchResults" class="dropdown"></div>
+        </div>
+    </div>
+
+    <!-- This represents the printable invoice area -->
+    <div id="invoice-area" class="invoice-box">
+        <div class="header">
+            <div>
+                <h1>HN Electronics</h1>
+                <p>Tel: 078 663 7512</p>
+            </div>
+            <div style="text-align: right;">
+                <h2 class="invoice-text" style="color: #333;">INVOICE</h2>
+                <p>Date: <span id="invDate"></span></p>
+                <p>Time: <span id="invTime"></span></p>
+            </div>
+        </div>
+
+        <table id="invoiceTable">
+            <thead>
+                <tr>
+                    <th>Item Description</th>
+                    <th>Price (LKR)</th>
+                    <th>Qty</th>
+                    <th>Total</th>
+                    <th class="no-print">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Items go here -->
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <h3>Subtotal: LKR <span id="subTotal">0.00</span></h3>
+        </div>
+
+        <!-- Profit (visible only in web view, not in export) -->
+        <div class="totals no-print">
+            <h3>Profit: LKR <span id="totalProfit">0.00</span></h3>
+        </div>
+        <div class="footer">
+            <p>Thank you for your business!</p>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button onclick="exportPDF()">Download PDF</button>
+        <button onclick="exportImage()">Download Image</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

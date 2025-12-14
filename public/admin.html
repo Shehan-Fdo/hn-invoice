@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Products - HN Electronics</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .product-list {
+            margin-top: 30px;
+        }
+
+        .product-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .product-table th {
+            background: #333;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .product-table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .product-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .btn-edit,
+        .btn-delete {
+            padding: 6px 12px;
+            margin-right: 5px;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .btn-edit {
+            background: #4CAF50;
+            color: white;
+        }
+
+
+
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+
+
+
+        .edit-mode input {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #4CAF50;
+            border-radius: 3px;
+        }
+
+        .btn-save,
+        .btn-cancel {
+            padding: 6px 12px;
+            margin-right: 5px;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .btn-save {
+            background: #ffffff;
+            color: #000000;
+            border: 1px solid #000000;
+        }
+
+        .btn-cancel {
+            background: #ffffff;
+            color: #000000;
+            border: 1px solid #000000;
+        }
+
+        .no-products {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-style: italic;
+        }
+
+        .product-count {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        @media only screen and (max-width: 600px) {
+
+            .product-table th,
+            .product-table td {
+                padding: 8px 4px;
+                font-size: 0.85em;
+            }
+
+            .btn-edit,
+            .btn-delete,
+            .btn-save,
+            .btn-cancel {
+                padding: 4px 8px;
+                font-size: 0.8em;
+                margin-right: 2px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="nav">
+        <a href="/">Create Invoice</a>
+        <a href="/admin.html">Manage Products</a>
+    </div>
+
+    <div class="invoice-box">
+        <h2>Add New Product</h2>
+        <form id="addForm">
+            <input type="text" id="pName" placeholder="Product Name" required><br><br>
+            <input type="number" id="pBuy" placeholder="Buying Price" required step="0.01"><br><br>
+            <input type="number" id="pSell" placeholder="Selling Price" required step="0.01"><br><br>
+            <button type="submit">Add Product</button>
+        </form>
+
+        <hr>
+
+        <h2>Bulk Add (JSON)</h2>
+        <p>Paste JSON array here (e.g. <code>[{"name": "X", "buyingPrice": 100, "sellingPrice": 150}]</code>)</p>
+        <textarea id="bulkJson" style="width:100%; height:150px;"></textarea><br>
+        <button onclick="bulkUpload()">Upload Bulk</button>
+
+        <hr>
+
+        <div class="product-list">
+            <h2>All Products</h2>
+            <p class="product-count">Total: <span id="productCount">0</span> products</p>
+            <div id="productTableContainer">
+                <p class="no-products">Loading products...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allProducts = [];
+
+        // Load products on page load
+        window.addEventListener('load', () => {
+            loadProducts();
+        });
+
+        // Add Single Product
+        document.getElementById('addForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('pName').value,
+                buyingPrice: parseFloat(document.getElementById('pBuy').value),
+                sellingPrice: parseFloat(document.getElementById('pSell').value)
+            };
+
+            try {
+                await fetch('/api/products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                alert('✅ Product Added Successfully!');
+                e.target.reset();
+                loadProducts(); // Reload the list
+            } catch (err) {
+                alert('❌ Error adding product');
+            }
+        });
+
+        // Bulk Upload
+        async function bulkUpload() {
+            try {
+                const json = JSON.parse(document.getElementById('bulkJson').value);
+                await fetch('/api/products/bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(json)
+                });
+                alert('✅ Bulk upload successful!');
+                document.getElementById('bulkJson').value = '';
+                loadProducts(); // Reload the list
+            } catch (err) {
+                alert('❌ Invalid JSON format');
+            }
+        }
+
+        // Load all products
+        async function loadProducts() {
+            try {
+                const response = await fetch('/api/products');
+                allProducts = await response.json();
+                renderProducts();
+            } catch (err) {
+                document.getElementById('productTableContainer').innerHTML =
+                    '<p class="no-products">Error loading products</p>';
+            }
+        }
+
+        // Render products table
+        function renderProducts() {
+            const container = document.getElementById('productTableContainer');
+            document.getElementById('productCount').textContent = allProducts.length;
+
+            if (allProducts.length === 0) {
+                container.innerHTML = '<p class="no-products">No products found. Add your first product above!</p>';
+                return;
+            }
+
+            let html = `
+                <table class="product-table">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Buying Price</th>
+                            <th>Selling Price</th>
+                            <th>Profit Margin</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            allProducts.forEach(product => {
+                const profit = product.sellingPrice - product.buyingPrice;
+                const profitPercent = ((profit / product.buyingPrice) * 100).toFixed(1);
+
+                html += `
+                    <tr id="row-${product._id}">
+                        <td class="col-name">${product.name}</td>
+                        <td class="col-buy">LKR ${product.buyingPrice.toFixed(2)}</td>
+                        <td class="col-sell">LKR ${product.sellingPrice.toFixed(2)}</td>
+                        <td>LKR ${profit.toFixed(2)} (${profitPercent}%)</td>
+                        <td>
+                            <button class="btn-edit" style="background-color:white; color:black; border: 1px solid black" onclick="editProduct('${product._id}')">Edit</button>
+                            <button class="btn-delete" style="background-color:white; color:black; border: 1px solid red" onclick="deleteProduct('${product._id}', '${product.name}')">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Edit product
+        function editProduct(id) {
+            const row = document.getElementById(`row-${id}`);
+            const product = allProducts.find(p => p._id === id);
+
+            row.classList.add('edit-mode');
+            row.innerHTML = `
+                <td><input type="text" id="edit-name-${id}" value="${product.name}"></td>
+                <td><input type="number" id="edit-buy-${id}" value="${product.buyingPrice}" step="0.01"></td>
+                <td><input type="number" id="edit-sell-${id}" value="${product.sellingPrice}" step="0.01"></td>
+                <td>-</td>
+                <td>
+                    <button class="btn-save" onclick="saveProduct('${id}')">✓</button>
+                    <button class="btn-cancel" onclick="loadProducts()">x</button>
+                </td>
+            `;
+        }
+
+        // Save edited product
+        async function saveProduct(id) {
+            const data = {
+                name: document.getElementById(`edit-name-${id}`).value,
+                buyingPrice: parseFloat(document.getElementById(`edit-buy-${id}`).value),
+                sellingPrice: parseFloat(document.getElementById(`edit-sell-${id}`).value)
+            };
+
+            try {
+                await fetch(`/api/products/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                alert('✅ Product updated successfully!');
+                loadProducts();
+            } catch (err) {
+                alert('❌ Error updating product');
+            }
+        }
+
+        // Delete product
+        async function deleteProduct(id, name) {
+            if (!confirm(`Are you sure you want to delete "${name}"?`)) {
+                return;
+            }
+
+            try {
+                await fetch(`/api/products/${id}`, {
+                    method: 'DELETE'
+                });
+                alert('✅ Product deleted successfully!');
+                loadProducts();
+            } catch (err) {
+                alert('❌ Error deleting product');
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,306 @@
+body {
+    font-family: 'Arial', sans-serif;
+    background: #f4f4f4;
+    padding: 20px;
+}
+
+.invoice-box {
+    background: white;
+    padding: 30px;
+    max-width: 800px;
+    margin: 0 auto;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+    overflow-x: auto;
+    border-radius: 10px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: auto;
+}
+
+th,
+td {
+    border-bottom: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+}
+
+.totals {
+    text-align: right;
+    margin-top: 20px;
+}
+
+.search-box {
+    position: relative;
+    max-width: 800px;
+    margin: 0 auto 20px auto;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.dropdown {
+    position: absolute;
+    background: white;
+    width: 100%;
+    border: 1px solid #ddd;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    z-index: 100;
+}
+
+.dropdown div {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.dropdown div:hover {
+    background: #f0f0f0;
+}
+
+.actions {
+    text-align: center;
+    margin-top: 20px;
+}
+
+button {
+    padding: 10px 20px;
+    background: #333;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin: 5px;
+}
+
+button:hover {
+    background: #555;
+}
+
+.nav {
+    max-width: 800px;
+    margin: 0 auto 20px;
+}
+
+.nav a {
+    margin-right: 15px;
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;
+}
+
+@media print {
+
+    .no-print,
+    .controls,
+    .actions,
+    .nav {
+        display: none !important;
+    }
+}
+
+/* Ensure Action column is hidden in exports */
+th.no-print,
+td.no-print {
+    width: auto;
+}
+
+/* --- MOBILE RESPONSIVE STYLES --- */
+/* --- MOBILE RESPONSIVE STYLES --- */
+@media only screen and (max-width: 600px) {
+
+    /* Remove box background and styling on mobile */
+    .invoice-box {
+        background: transparent;
+        box-shadow: none;
+        padding: 10px;
+    }
+
+    /* Also adjust body padding */
+    body {
+        padding: 5px;
+        background: #ffffff;
+    }
+
+    /* ... existing mobile styles ... */
+
+    /* Stack header elements vertically */
+    .header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    /* Change the header back to a horizontal flex container in mobile view */
+    /* This new rule targets the direct children of .invoice-box within the media query */
+    .header {
+        display: flex;
+        /* Re-establish flex layout */
+        flex-direction: row;
+        /* Keep the two main divs side-by-side */
+        justify-content: space-between;
+        /* Space them out */
+        align-items: flex-start;
+        /* Align to the top */
+        text-align: left;
+        /* Reset text alignment for the whole header */
+    }
+
+    /* Target the container for company name (left side) */
+    .header>div:first-child {
+        text-align: left;
+        order: 1;
+        /* Place it first */
+    }
+
+    /* Target the container for INVOICE, Date, and Time (right side) */
+    .header>div:last-child {
+        text-align: right;
+        /* Keep date/time right-aligned */
+        order: 2;
+        /* Place it second */
+    }
+
+    /* Specific adjustment for the INVOICE text to place it above the company name */
+    .header>div:last-child>.invoice-text {
+        order: -1;
+        /* Place the INVOICE text first within its flex container */
+        font-size: 1.5em;
+        /* Make it a bit bigger */
+        margin-bottom: 5px;
+        /* Add some space below it */
+    }
+
+    /* Now, we need to restructure the DOM visually.
+       Since we can't move the H2 text to the left div using only CSS,
+       we must adjust the *parent* divs' alignment to make them appear side-by-side. */
+
+    /* The goal is to have the INVOICE text on the right of HN Electronics.
+       We can achieve this by making the right div appear right next to the left div.
+       Since the left div is already on the left, let's keep the right div on the right. */
+
+    /* Resetting the .header styles to achieve the desired alignment */
+    .header {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+        /* Align them both to the top */
+        padding-bottom: 10px;
+        /* Reduce padding for mobile */
+    }
+
+    /* Left side (HN Electronics) */
+    .header>div:first-child {
+        margin-bottom: 0;
+        /* Remove vertical margin */
+        text-align: left;
+    }
+
+    /* Right side (INVOICE, Date, Time) */
+    .header>div:last-child {
+        margin-bottom: 0;
+        /* Remove vertical margin */
+        text-align: right;
+    }
+
+    /* Move the INVOICE text itself to align with HN Electronics */
+    /* This is achieved by making the H2 display inline-block or by changing its parent div structure. */
+    .invoice-text {
+        margin-top: 0;
+        /* Keep it in the right-hand container, but ensure the right-hand container's content
+           doesn't take up too much vertical space above HN Electronics */
+    }
+
+    /* Adjust the company name size to match the space taken by INVOICE in the other div */
+    .header h1 {
+        display: inline-block;
+    }
+
+    /* Final adjustment to put the H2 on the same line as H1 */
+    /* This requires modifying the HTML structure slightly to use flexbox on the inner elements
+       or placing the H2 outside the date/time div. */
+
+    /* Since we cannot change the HTML, we must achieve the layout visually. */
+    /* To visually align them on the same line: */
+
+    .header {
+        /* Keep the header as two side-by-side columns */
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        /* Align items vertically in the middle */
+    }
+
+    /* Left container: HN Electronics, Tel */
+    .header>div:first-child {
+        text-align: left;
+        margin-bottom: 0;
+    }
+
+    /* Right container: INVOICE, Date, Time */
+    .header>div:last-child {
+        text-align: right;
+        margin-bottom: 0;
+    }
+
+    /* Isolate the INVOICE text for specific styling */
+    .invoice-text {
+        font-size: 1.8em;
+        /* Make it prominent */
+        display: block;
+        /* Ensure it takes its own line *within* the right-side container */
+        margin-bottom: 10px;
+        /* Add space below INVOICE */
+    }
+
+    /* Revert the stacking of the header content and allow the INVOICE to take up less vertical space */
+    .header>div:first-child h1,
+    .header>div:last-child .invoice-text {
+        line-height: 1.2;
+        /* Tighter line height for better alignment */
+    }
+
+    /* If you want the INVOICE text to be on the *same vertical line* as HN Electronics,
+       you must make the right container (`.header > div:last-child`) only contain
+       the 'INVOICE' text, and put the Date/Time below it, or rely on `align-items: center`
+       on the main header flex container. */
+
+    /* Let's try the simpler approach using flex properties and visual alignment: */
+
+    /* Align the whole header to the center vertically to put INVOICE and HN Electronics on the same line */
+    .header {
+        align-items: center;
+    }
+
+    /* Ensure the Date/Time paragraph doesn't push the INVOICE text down too much */
+    .header>div:last-child p {
+        font-size: 0.8em;
+        /* Smaller date/time text */
+        line-height: 1.2;
+        margin: 0;
+    }
+
+    /* Final proposed change: */
+    .header>div:last-child>.invoice-text {
+        /* Remove the top margin on mobile to help alignment */
+        margin-top: 0;
+    }
+
+    /* End of mobile-specific styles */
+}
