@@ -1,10 +1,11 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
-const Product = require('./models/Product');
+const { db } = require('./db');
+const { products } = require('./db/schema');
+const { eq, ilike, desc, asc } = require('drizzle-orm');
 
 const app = express();
 app.use(bodyParser.json());
@@ -22,19 +23,31 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('Connected to MongoDB'))
-    .catch(err => console.error('Connection error:', err));
-
 // 1. Search Products
 app.get('/api/search', async (req, res) => {
     const query = req.query.q;
+
+    // Validate query - must be a non-empty string
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+        return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    // Sanitize the query - escape special LIKE pattern characters
+    const sanitizedQuery = query.replace(/[%_]/g, '\\$&');
+
     try {
-        const products = await Product.find({
-            name: { $regex: query, $options: 'i' } // Case insensitive search
-        }).limit(10);
-        res.json(products);
+        const result = await db.select().from(products)
+            .where(ilike(products.name, `%${sanitizedQuery}%`))
+            .limit(10);
+
+        // Cast numeric strings to numbers
+        const formatted = result.map(p => ({
+            ...p,
+            buyingPrice: Number(p.buyingPrice),
+            sellingPrice: Number(p.sellingPrice)
+        }));
+
+        res.json(formatted);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -43,8 +56,7 @@ app.get('/api/search', async (req, res) => {
 // 2. Add Single Product
 app.post('/api/products', async (req, res) => {
     try {
-        const newProduct = new Product(req.body);
-        await newProduct.save();
+        await db.insert(products).values(req.body);
         res.json({ message: 'Product added successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -55,7 +67,7 @@ app.post('/api/products', async (req, res) => {
 app.post('/api/products/bulk', async (req, res) => {
     try {
         // Expecting array of objects
-        await Product.insertMany(req.body);
+        await db.insert(products).values(req.body);
         res.json({ message: 'Bulk products added successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -65,8 +77,16 @@ app.post('/api/products/bulk', async (req, res) => {
 // 4. Get All Products
 app.get('/api/products', async (req, res) => {
     try {
-        const products = await Product.find().sort({ name: 1 });
-        res.json(products);
+        const result = await db.select().from(products).orderBy(asc(products.name));
+
+        // Cast numeric strings to numbers
+        const formatted = result.map(p => ({
+            ...p,
+            buyingPrice: Number(p.buyingPrice),
+            sellingPrice: Number(p.sellingPrice)
+        }));
+
+        res.json(formatted);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -75,7 +95,9 @@ app.get('/api/products', async (req, res) => {
 // 5. Update Product
 app.put('/api/products/:id', async (req, res) => {
     try {
-        await Product.findByIdAndUpdate(req.params.id, req.body);
+        await db.update(products)
+            .set(req.body)
+            .where(eq(products.id, Number(req.params.id)));
         res.json({ message: 'Product updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -85,7 +107,8 @@ app.put('/api/products/:id', async (req, res) => {
 // 6. Delete Product
 app.delete('/api/products/:id', async (req, res) => {
     try {
-        await Product.findByIdAndDelete(req.params.id);
+        await db.delete(products)
+            .where(eq(products.id, Number(req.params.id)));
         res.json({ message: 'Product deleted successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });

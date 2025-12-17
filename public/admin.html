@@ -241,14 +241,14 @@
                 const profitPercent = ((profit / product.buyingPrice) * 100).toFixed(1);
 
                 html += `
-                    <tr id="row-${product._id}">
+                    <tr id="row-${product.id}">
                         <td class="col-name">${product.name}</td>
                         <td class="col-buy">LKR ${product.buyingPrice.toFixed(2)}</td>
                         <td class="col-sell">LKR ${product.sellingPrice.toFixed(2)}</td>
                         <td>LKR ${profit.toFixed(2)} (${profitPercent}%)</td>
                         <td>
-                            <button class="btn-edit" style="background-color:white; color:black; border: 1px solid black" onclick="editProduct('${product._id}')">Edit</button>
-                            <button class="btn-delete" style="background-color:white; color:black; border: 1px solid red" onclick="deleteProduct('${product._id}', '${product.name}')">Delete</button>
+                            <button class="btn-edit" style="background-color:white; color:black; border: 1px solid black" onclick="editProduct('${product.id}')">Edit</button>
+                            <button class="btn-delete" style="background-color:white; color:black; border: 1px solid red" onclick="deleteProduct('${product.id}', '${product.name}')">Delete</button>
                         </td>
                     </tr>
                 `;
@@ -265,7 +265,7 @@
         // Edit product
         function editProduct(id) {
             const row = document.getElementById(`row-${id}`);
-            const product = allProducts.find(p => p._id === id);
+            const product = allProducts.find(p => p.id == id);
 
             row.classList.add('edit-mode');
             row.innerHTML = `

@@ -2,6 +2,13 @@
 document.getElementById('invDate').innerText = new Date().toLocaleDateString();
 document.getElementById('invTime').innerText = new Date().toLocaleTimeString();
 
+// Utility function to escape HTML and prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 const searchInput = document.getElementById('productSearch');
 const resultsBox = document.getElementById('searchResults');
 const tableBody = document.querySelector('#invoiceTable tbody');
@@ -17,7 +24,7 @@ searchInput.addEventListener('input', async (e) => {
 
     try {
         console.log(`Searching for: ${query}`);
-        const res = await fetch(`/api/search?q=${query}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
 
         if (!res.ok) {
             throw new Error(`Server error: ${res.status} ${res.statusText}`);
@@ -48,7 +55,7 @@ searchInput.addEventListener('input', async (e) => {
 
 function addToInvoice(product) {
     // Check if exists
-    const existing = invoiceItems.find(i => i._id === product._id);
+    const existing = invoiceItems.find(i => i.id === product.id);
     if (existing) {
         existing.qty++;
     } else {
@@ -60,16 +67,18 @@ function addToInvoice(product) {
 }
 
 function updateQty(id, newQty) {
-    const item = invoiceItems.find(i => i._id === id);
+    const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+    const item = invoiceItems.find(i => i.id === numericId);
     if (item) {
-        item.qty = parseInt(newQty);
-        if (item.qty <= 0) removeItem(id);
+        item.qty = parseInt(newQty, 10);
+        if (item.qty <= 0) removeItem(numericId);
         else renderTable();
     }
 }
 
 function removeItem(id) {
-    invoiceItems = invoiceItems.filter(i => i._id !== id);
+    const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+    invoiceItems = invoiceItems.filter(i => i.id !== numericId);
     renderTable();
 }
 
@@ -80,17 +89,18 @@ function renderTable() {
 
     invoiceItems.forEach(item => {
         const total = item.sellingPrice * item.qty;
-        const profit = (item.sellingPrice - item.buyingPrice) * item.qty;
+        const buyingPrice = item.buyingPrice || 0; // Default to 0 if null/undefined
+        const profit = (item.sellingPrice - buyingPrice) * item.qty;
         subTotal += total;
         totalProfit += profit;
 
         const row = `
             <tr>
-                <td>${item.name}</td>
+                <td>${escapeHtml(item.name)}</td>
                 <td>${item.sellingPrice}</td>
-                <td><input type="number" value="${item.qty}" onchange="updateQty('${item._id}', this.value)" style="width: 50px;"></td>
+                <td><input type="number" value="${item.qty}" onchange="updateQty('${item.id}', this.value)" style="width: 50px;"></td>
                 <td>${total}</td>
-                <td class="no-print"><button onclick="removeItem('${item._id}')" style="background:white; color:black; padding:5px;">X</button></td>
+                <td class="no-print"><button onclick="removeItem('${item.id}')" style="background:white; color:black; padding:5px;">X</button></td>
             </tr>
         `;
         tableBody.innerHTML += row;
