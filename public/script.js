@@ -14,6 +14,29 @@ const resultsBox = document.getElementById('searchResults');
 const tableBody = document.querySelector('#invoiceTable tbody');
 let invoiceItems = [];
 
+// --- Auto-Save Logic ---
+const STORAGE_KEY = 'HN_INVOICE_ITEMS';
+
+function saveToLocal() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(invoiceItems));
+}
+
+function loadFromLocal() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        try {
+            invoiceItems = JSON.parse(saved);
+            renderTable();
+        } catch (e) {
+            console.error('Error loading saved invoice:', e);
+            localStorage.removeItem(STORAGE_KEY);
+        }
+    }
+}
+
+// Load saved data on startup
+window.addEventListener('DOMContentLoaded', loadFromLocal);
+
 // Search Logic
 searchInput.addEventListener('input', async (e) => {
     const query = e.target.value;
@@ -61,6 +84,7 @@ function addToInvoice(product) {
     } else {
         invoiceItems.push({ ...product, qty: 1 });
     }
+    saveToLocal(); // Auto-save
     renderTable();
     resultsBox.style.display = 'none';
     searchInput.value = '';
@@ -72,13 +96,17 @@ function updateQty(id, newQty) {
     if (item) {
         item.qty = parseInt(newQty, 10);
         if (item.qty <= 0) removeItem(numericId);
-        else renderTable();
+        else {
+            saveToLocal(); // Auto-save
+            renderTable();
+        }
     }
 }
 
 function removeItem(id) {
     const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
     invoiceItems = invoiceItems.filter(i => i.id !== numericId);
+    saveToLocal(); // Auto-save
     renderTable();
 }
 
@@ -158,6 +186,7 @@ function promptSaveSale() {
                 alert('✅ Sale saved to records!');
                 // Clear the invoice
                 invoiceItems = [];
+                saveToLocal(); // Clear storage
                 renderTable();
             } else {
                 alert('❌ Failed to save sale. Please try again.');
