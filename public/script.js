@@ -110,8 +110,69 @@ function renderTable() {
     document.getElementById('totalProfit').innerText = totalProfit.toFixed(2);
 }
 
+// Save sale to database
+async function saveSale() {
+    if (invoiceItems.length === 0) {
+        return false;
+    }
+
+    const subtotal = invoiceItems.reduce((sum, item) => sum + (item.sellingPrice * item.qty), 0);
+    const profit = invoiceItems.reduce((sum, item) => {
+        const buyingPrice = item.buyingPrice || 0;
+        return sum + ((item.sellingPrice - buyingPrice) * item.qty);
+    }, 0);
+
+    try {
+        const response = await fetch('/api/sales', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                items: invoiceItems.map(item => ({
+                    name: item.name,
+                    qty: item.qty,
+                    price: item.sellingPrice,
+                    total: item.sellingPrice * item.qty
+                })),
+                subtotal: subtotal,
+                profit: profit
+            })
+        });
+
+        if (response.ok) {
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('Error saving sale:', error);
+        return false;
+    }
+}
+
+// Prompt to save sale after export
+function promptSaveSale() {
+    if (invoiceItems.length === 0) return;
+
+    if (confirm('✅ Export complete!\n\nAdd this invoice to sales records?')) {
+        saveSale().then(success => {
+            if (success) {
+                alert('✅ Sale saved to records!');
+                // Clear the invoice
+                invoiceItems = [];
+                renderTable();
+            } else {
+                alert('❌ Failed to save sale. Please try again.');
+            }
+        });
+    }
+}
+
 // Export PDF - renders as professional document
 function exportPDF() {
+    if (invoiceItems.length === 0) {
+        alert('Please add items to the invoice first.');
+        return;
+    }
+
     const element = document.getElementById('invoice-area');
 
     // Hide all web UI elements
@@ -165,12 +226,20 @@ function exportPDF() {
             document.body.style.background = originalBg;
             document.body.style.padding = originalPadding;
             element.style.boxShadow = originalBoxShadow;
+
+            // Prompt to save sale
+            setTimeout(() => promptSaveSale(), 300);
         });
     }, 100);
 }
 
 // Export Image - renders as professional document
 function exportImage() {
+    if (invoiceItems.length === 0) {
+        alert('Please add items to the invoice first.');
+        return;
+    }
+
     const element = document.getElementById('invoice-area');
 
     // Hide all web UI elements
@@ -219,6 +288,9 @@ function exportImage() {
             link.download = `HN_Electronics_Invoice_${new Date().toISOString().slice(0, 10)}.png`;
             link.href = canvas.toDataURL('image/png', 1.0);
             link.click();
+
+            // Prompt to save sale
+            setTimeout(() => promptSaveSale(), 300);
         });
     }, 100);
 }

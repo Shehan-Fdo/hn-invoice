@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
 const { db } = require('./db');
-const { products } = require('./db/schema');
+const { products, sales } = require('./db/schema');
 const { eq, ilike, desc, asc } = require('drizzle-orm');
 
 const app = express();
@@ -114,6 +114,61 @@ app.delete('/api/products/:id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// ============ SALES ENDPOINTS ============
+
+// 7. Save a new sale
+app.post('/api/sales', async (req, res) => {
+    try {
+        const { items, subtotal, profit } = req.body;
+
+        // Validate required fields
+        if (!items || !subtotal) {
+            return res.status(400).json({ error: 'Items and subtotal are required' });
+        }
+
+        await db.insert(sales).values({
+            items: JSON.stringify(items),
+            subtotal: String(subtotal),
+            profit: String(profit || 0)
+        });
+
+        res.json({ message: 'Sale saved successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 8. Get all sales (sorted by date, newest first)
+app.get('/api/sales', async (req, res) => {
+    try {
+        const result = await db.select().from(sales).orderBy(desc(sales.date));
+
+        // Parse items JSON and format numbers
+        const formatted = result.map(s => ({
+            ...s,
+            items: JSON.parse(s.items),
+            subtotal: Number(s.subtotal),
+            profit: Number(s.profit)
+        }));
+
+        res.json(formatted);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 9. Delete a sale
+app.delete('/api/sales/:id', async (req, res) => {
+    try {
+        await db.delete(sales)
+            .where(eq(sales.id, Number(req.params.id)));
+        res.json({ message: 'Sale deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Export the app for Vercel serverless
 module.exports = app;
 

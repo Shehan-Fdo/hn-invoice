@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Dashboard - HN Electronics</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            background: #f0f0f0;
+        }
+
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .dashboard-title {
+            margin: 0;
+            font-size: 1.8em;
+            font-weight: 700;
+        }
+
+        .dashboard-subtitle {
+            color: #666;
+            margin: 5px 0 0 0;
+            font-size: 0.9em;
+        }
+
+        .date-filter {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .date-filter input {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            font-size: 0.9em;
+        }
+
+        .date-filter button {
+            padding: 8px 16px;
+            font-size: 0.9em;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .card-title {
+            margin: 0;
+            font-size: 1em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #333;
+        }
+
+        .card-subtitle {
+            font-size: 0.8em;
+            color: #888;
+        }
+
+        /* KPI Row */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .kpi-card {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .kpi-label {
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #333;
+            line-height: 1.2;
+        }
+
+        .kpi-unit {
+            font-size: 0.5em;
+            font-weight: 400;
+            color: #666;
+        }
+
+        .kpi-change {
+            font-size: 0.8em;
+            margin-top: 8px;
+            color: #666;
+        }
+
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Chart */
+        .chart-area {
+            position: relative;
+            height: 200px;
+            border-left: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
+            margin-left: 45px;
+        }
+
+        .chart-area svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .chart-line {
+            fill: none;
+            stroke: #333;
+            stroke-width: 2;
+        }
+
+        .chart-area-fill {
+            fill: rgba(0, 0, 0, 0.05);
+            stroke: none;
+        }
+
+        .chart-dot {
+            fill: #333;
+            cursor: pointer;
+        }
+
+        .chart-dot:hover {
+            r: 6;
+        }
+
+        .chart-tooltip {
+            position: absolute;
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            font-size: 0.8em;
+            pointer-events: none;
+            display: none;
+            z-index: 10;
+        }
+
+        .y-labels {
+            position: absolute;
+            left: -45px;
+            top: 0;
+            height: 100%;
+            width: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-size: 0.7em;
+            color: #999;
+            text-align: right;
+            padding-right: 8px;
+        }
+
+        .x-labels {
+            display: flex;
+            margin-left: 45px;
+            margin-top: 8px;
+        }
+
+        .x-labels span {
+            flex: 1;
+            text-align: center;
+            font-size: 0.75em;
+            color: #888;
+        }
+
+        /* Period Stats */
+        .period-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .period-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            background: #f9f9f9;
+            border: 1px solid #eee;
+        }
+
+        .period-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .period-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        /* Top Products */
+        .product-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .product-item:last-child {
+            border-bottom: none;
+        }
+
+        .product-rank {
+            width: 24px;
+            height: 24px;
+            background: #333;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .product-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .product-name {
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .product-meta {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* Sales Table */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        .sales-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+
+        .sales-table th {
+            background: #333;
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .sales-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+
+        .sales-table tbody tr:hover {
+            background: #fafafa;
+        }
+
+        .sale-id {
+            font-family: monospace;
+            color: #888;
+            font-size: 0.85em;
+        }
+
+        .sale-datetime {
+            white-space: nowrap;
+        }
+
+        .sale-time {
+            color: #888;
+            font-size: 0.85em;
+        }
+
+        .sale-items {
+            max-width: 300px;
+        }
+
+        .items-badge {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 3px 8px;
+            font-size: 0.8em;
+            margin-bottom: 5px;
+        }
+
+        .items-list {
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .items-toggle {
+            color: #333;
+            cursor: pointer;
+            font-size: 0.85em;
+            text-decoration: underline;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        .items-detail {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border: 1px solid #eee;
+        }
+
+        .items-detail.show {
+            display: block;
+        }
+
+        .items-detail ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        .items-detail li {
+            margin-bottom: 4px;
+        }
+
+        .sale-amount {
+            text-align: right;
+            white-space: nowrap;
+            font-weight: 600;
+        }
+
+        .sale-profit {
+            font-size: 0.85em;
+            color: #666;
+            font-weight: 400;
+        }
+
+        .btn-delete {
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            background: white;
+            color: #666;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+
+        .btn-delete:hover {
+            border-color: #333;
+            color: #333;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .kpi-row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 15px;
+            }
+
+            .kpi-row {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .kpi-card {
+                padding: 15px;
+            }
+
+            .kpi-value {
+                font-size: 1.5em;
+            }
+
+            .period-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .dashboard-title {
+                font-size: 1.5em;
+            }
+
+            .card {
+                padding: 15px;
+            }
+
+            .chart-area {
+                height: 160px;
+            }
+
+            /* Mobile table styles */
+            .sales-table th,
+            .sales-table td {
+                padding: 10px 8px;
+                font-size: 0.85em;
+            }
+
+            .sale-items {
+                max-width: 180px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .dashboard-container {
+                padding: 10px;
+            }
+
+            .kpi-row {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .kpi-card {
+                padding: 12px 10px;
+            }
+
+            .kpi-label {
+                font-size: 0.65em;
+            }
+
+            .kpi-value {
+                font-size: 1.3em;
+            }
+
+            .kpi-change {
+                font-size: 0.7em;
+            }
+
+            .date-filter {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .date-filter input {
+                flex: 1;
+                min-width: 100px;
+                font-size: 0.85em;
+                padding: 10px 8px;
+            }
+
+            .date-filter button {
+                flex: 1;
+                padding: 10px 12px;
+                font-size: 0.85em;
+            }
+
+            .card-title {
+                font-size: 0.9em;
+            }
+
+            .chart-area {
+                height: 140px;
+                margin-left: 35px;
+            }
+
+            .y-labels {
+                width: 32px;
+                font-size: 0.6em;
+            }
+
+            .x-labels {
+                margin-left: 35px;
+            }
+
+            .x-labels span {
+                font-size: 0.65em;
+            }
+
+            /* Card-style table for mobile */
+            .sales-table {
+                font-size: 0.8em;
+            }
+
+            .sales-table thead {
+                display: none;
+            }
+
+            /* Compact mobile table */
+            .sales-table tbody tr {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                grid-template-rows: auto auto auto;
+                gap: 5px;
+                margin-bottom: 10px;
+                border: 1px solid #e0e0e0;
+                padding: 10px;
+                background: white;
+                border-radius: 6px;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            }
+
+            .sales-table td {
+                display: block;
+                padding: 0;
+                border: none;
+                text-align: left;
+            }
+
+            .sales-table td::before {
+                display: none;
+                /* Hide labels for compact view */
+            }
+
+            /* ID & Date on top row */
+            .sale-id {
+                font-weight: bold;
+                color: #333;
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            .sale-datetime {
+                grid-column: 2;
+                grid-row: 1;
+                text-align: right;
+                font-size: 0.85em;
+                color: #666;
+            }
+
+            /* Items take full width middle */
+            .sale-items {
+                grid-column: 1 / span 2;
+                grid-row: 2;
+                margin: 5px 0;
+                font-size: 0.9em;
+                color: #555;
+            }
+
+            /* Amount & Actions bottom row */
+            .sale-amount {
+                grid-column: 1;
+                grid-row: 3;
+                font-weight: bold;
+                color: #333;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+
+            .sale-profit {
+                display: none;
+                /* Hide profit on mobile list to save space */
+            }
+
+            .sales-table td:last-child {
+                grid-column: 2;
+                grid-row: 3;
+                text-align: right;
+                justify-content: flex-end;
+                padding-top: 0;
+            }
+
+
+
+
+            .btn-delete {
+                padding: 8px 16px;
+                font-size: 0.85em;
+            }
+
+            .product-item {
+                padding: 10px 0;
+            }
+
+            .product-rank {
+                width: 20px;
+                height: 20px;
+                font-size: 0.7em;
+                margin-right: 10px;
+            }
+
+            .product-name {
+                font-size: 0.9em;
+            }
+
+            .product-meta {
+                font-size: 0.75em;
+            }
+
+            .period-item {
+                padding: 10px;
+            }
+
+            .period-label,
+            .period-value {
+                font-size: 0.85em;
+            }
+
+            .items-detail {
+                padding: 8px;
+                font-size: 0.85em;
+            }
+
+            .items-detail ul {
+                padding-left: 15px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .kpi-row {
+                grid-template-columns: 1fr;
+            }
+
+            .kpi-card {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px 15px;
+            }
+
+            .kpi-label {
+                margin-bottom: 0;
+            }
+
+            .kpi-value {
+                font-size: 1.2em;
+            }
+
+            .kpi-change {
+                display: none;
+            }
+
+            .date-filter input,
+            .date-filter button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="nav">
+        <a href="/">Create Invoice</a>
+        <a href="/admin.html">Manage Products</a>
+        <a href="/sales.html">Sales History</a>
+    </div>
+
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <div>
+                <h1 class="dashboard-title">Sales Dashboard</h1>
+                <p class="dashboard-subtitle">Real-time business analytics and insights</p>
+            </div>
+            <div class="date-filter">
+                <input type="date" id="startDate">
+                <span style="color: #888;">→</span>
+                <input type="date" id="endDate">
+                <button onclick="applyFilter()">Apply</button>
+                <button onclick="clearFilter()" style="background: #666;">Reset</button>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-row">
+            <div class="kpi-card">
+                <div class="kpi-label">Total Sales</div>
+                <div class="kpi-value" id="totalSales">0</div>
+                <div class="kpi-change" id="salesPeriod">All time</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Revenue</div>
+                <div class="kpi-value"><span class="kpi-unit">LKR</span> <span id="totalRevenue">0</span></div>
+                <div class="kpi-change" id="revenueChange">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Profit</div>
+                <div class="kpi-value"><span class="kpi-unit">LKR</span> <span id="totalProfit">0</span></div>
+                <div class="kpi-change" id="profitChange">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Margin</div>
+                <div class="kpi-value"><span id="profitMargin">0</span><span class="kpi-unit">%</span></div>
+                <div class="kpi-change">Profit / Revenue</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Avg. Order</div>
+                <div class="kpi-value"><span class="kpi-unit">LKR</span> <span id="avgOrder">0</span></div>
+                <div class="kpi-change" id="itemsPerOrder">-</div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Chart -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Revenue Trend (7 Days)</h3>
+                        <span class="card-subtitle" id="chartTotal">-</span>
+                    </div>
+                    <div class="chart-area" id="chartArea">
+                        <div class="y-labels" id="yLabels"></div>
+                        <svg id="chartSvg"></svg>
+                        <div class="chart-tooltip" id="tooltip"></div>
+                    </div>
+                    <div class="x-labels" id="xLabels"></div>
+                </div>
+
+                <!-- Sales Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Recent Transactions</h3>
+                        <span class="card-subtitle" id="tableCount">0 records</span>
+                    </div>
+                    <div class="table-wrapper">
+                        <div id="salesTable"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Period Breakdown -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Performance Overview</h3>
+                    </div>
+                    <div class="period-grid">
+                        <div class="period-item">
+                            <span class="period-label">Today</span>
+                            <span class="period-value" id="todayRev">LKR 0</span>
+                        </div>
+                        <div class="period-item">
+                            <span class="period-label">This Week</span>
+                            <span class="period-value" id="weekRev">LKR 0</span>
+                        </div>
+                        <div class="period-item">
+                            <span class="period-label">This Month</span>
+                            <span class="period-value" id="monthRev">LKR 0</span>
+                        </div>
+                        <div class="period-item">
+                            <span class="period-label">This Year</span>
+                            <span class="period-value" id="yearRev">LKR 0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Sellers -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Top Sellers</h3>
+                        <span class="card-subtitle">By quantity</span>
+                    </div>
+                    <div id="topSellers">
+                        <div class="empty-state" style="padding: 20px;">No data</div>
+                    </div>
+                </div>
+
+                <!-- Top Revenue -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Top Revenue</h3>
+                        <span class="card-subtitle">By earnings</span>
+                    </div>
+                    <div id="topRevenue">
+                        <div class="empty-state" style="padding: 20px;">No data</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allSales = [];
+        let filtered = [];
+
+        window.addEventListener('load', () => {
+            const today = new Date();
+            const ago = new Date(today);
+            ago.setDate(ago.getDate() - 30);
+            document.getElementById('endDate').value = today.toISOString().split('T')[0];
+            document.getElementById('startDate').value = ago.toISOString().split('T')[0];
+            loadData();
+        });
+
+        // Re-render chart on resize
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (allSales.length > 0) renderChart();
+            }, 250);
+        });
+
+        async function loadData() {
+            try {
+                const res = await fetch('/api/sales');
+                allSales = await res.json();
+                filtered = [...allSales];
+                render();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function applyFilter() {
+            const start = new Date(document.getElementById('startDate').value);
+            const end = new Date(document.getElementById('endDate').value);
+            start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999);
+
+            filtered = allSales.filter(s => {
+                const d = new Date(s.date);
+                return d >= start && d <= end;
+            });
+
+            document.getElementById('salesPeriod').textContent =
+                `${fmtShort(start)} - ${fmtShort(end)}`;
+            render();
+        }
+
+        function clearFilter() {
+            filtered = [...allSales];
+            document.getElementById('salesPeriod').textContent = 'All time';
+            render();
+        }
+
+        function render() {
+            renderKPIs();
+            renderPeriods();
+            renderChart();
+            renderTopProducts();
+            renderTable();
+        }
+
+        function renderKPIs() {
+            const revenue = filtered.reduce((s, x) => s + x.subtotal, 0);
+            const profit = filtered.reduce((s, x) => s + x.profit, 0);
+            const items = filtered.reduce((s, x) => s + x.items.reduce((a, i) => a + i.qty, 0), 0);
+            const margin = revenue > 0 ? (profit / revenue * 100) : 0;
+            const avg = filtered.length > 0 ? revenue / filtered.length : 0;
+            const perOrder = filtered.length > 0 ? items / filtered.length : 0;
+
+            document.getElementById('totalSales').textContent = filtered.length;
+            document.getElementById('totalRevenue').textContent = fmtNum(revenue);
+            document.getElementById('totalProfit').textContent = fmtNum(profit);
+            document.getElementById('profitMargin').textContent = margin.toFixed(1);
+            document.getElementById('avgOrder').textContent = fmtNum(avg);
+            document.getElementById('itemsPerOrder').textContent = `~${perOrder.toFixed(1)} items/order`;
+        }
+
+        function renderPeriods() {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const week = new Date(today); week.setDate(week.getDate() - week.getDay());
+            const month = new Date(now.getFullYear(), now.getMonth(), 1);
+            const year = new Date(now.getFullYear(), 0, 1);
+
+            const todayS = allSales.filter(s => new Date(s.date) >= today);
+            const weekS = allSales.filter(s => new Date(s.date) >= week);
+            const monthS = allSales.filter(s => new Date(s.date) >= month);
+            const yearS = allSales.filter(s => new Date(s.date) >= year);
+
+            document.getElementById('todayRev').textContent = `LKR ${fmtNum(todayS.reduce((s, x) => s + x.subtotal, 0))}`;
+            document.getElementById('weekRev').textContent = `LKR ${fmtNum(weekS.reduce((s, x) => s + x.subtotal, 0))}`;
+            document.getElementById('monthRev').textContent = `LKR ${fmtNum(monthS.reduce((s, x) => s + x.subtotal, 0))}`;
+            document.getElementById('yearRev').textContent = `LKR ${fmtNum(yearS.reduce((s, x) => s + x.subtotal, 0))}`;
+        }
+
+        function renderChart() {
+            const svg = document.getElementById('chartSvg');
+            const area = document.getElementById('chartArea');
+            const tooltip = document.getElementById('tooltip');
+
+            const days = [];
+            const today = new Date();
+
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                d.setHours(0, 0, 0, 0);
+                const next = new Date(d); next.setDate(next.getDate() + 1);
+
+                const daySales = allSales.filter(s => {
+                    const sd = new Date(s.date);
+                    return sd >= d && sd < next;
+                });
+
+                days.push({
+                    date: d,
+                    rev: daySales.reduce((s, x) => s + x.subtotal, 0),
+                    count: daySales.length
+                });
+            }
+
+            const maxRev = Math.max(...days.map(d => d.rev), 100);
+            const w = area.offsetWidth;
+            const h = area.offsetHeight;
+            const pad = 10;
+
+            const pts = days.map((d, i) => ({
+                x: pad + (i * (w - pad * 2) / 6),
+                y: h - pad - (d.rev / maxRev * (h - pad * 2)),
+                ...d
+            }));
+
+            // Area fill
+            const areaPath = `M ${pts[0].x} ${h} ` +
+                pts.map(p => `L ${p.x} ${p.y}`).join(' ') +
+                ` L ${pts[pts.length - 1].x} ${h} Z`;
+
+            // Line
+            const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+            let svgHtml = `
+                <path class="chart-area-fill" d="${areaPath}"/>
+                <path class="chart-line" d="${linePath}"/>
+            `;
+
+            pts.forEach((p, i) => {
+                svgHtml += `<circle class="chart-dot" cx="${p.x}" cy="${p.y}" r="4" 
+                    data-rev="${p.rev}" data-count="${p.count}"/>`;
+            });
+
+            svg.innerHTML = svgHtml;
+
+            svg.querySelectorAll('.chart-dot').forEach(dot => {
+                dot.addEventListener('mouseenter', e => {
+                    const rev = parseFloat(e.target.dataset.rev);
+                    const cnt = parseInt(e.target.dataset.count);
+                    tooltip.innerHTML = `LKR ${fmtNum(rev)}<br>${cnt} sale${cnt !== 1 ? 's' : ''}`;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = `${e.target.cx.baseVal.value - 40}px`;
+                    tooltip.style.top = `${e.target.cy.baseVal.value - 50}px`;
+                });
+                dot.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+            });
+
+            // Y-axis
+            document.getElementById('yLabels').innerHTML = `
+                <span>${fmtK(maxRev)}</span>
+                <span>${fmtK(maxRev / 2)}</span>
+                <span>0</span>
+            `;
+
+            // X-axis
+            const dn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            document.getElementById('xLabels').innerHTML = days.map(d =>
+                `<span>${dn[d.date.getDay()]}</span>`
+            ).join('');
+
+            // Total
+            const weekTotal = days.reduce((s, d) => s + d.rev, 0);
+            document.getElementById('chartTotal').textContent = `Week Total: LKR ${fmtNum(weekTotal)}`;
+        }
+
+        function renderTopProducts() {
+            const stats = {};
+            allSales.forEach(s => {
+                s.items.forEach(i => {
+                    if (!stats[i.name]) stats[i.name] = { qty: 0, rev: 0 };
+                    stats[i.name].qty += i.qty;
+                    stats[i.name].rev += i.total;
+                });
+            });
+
+            const prods = Object.entries(stats).map(([n, s]) => ({ name: n, ...s }));
+            const byQty = [...prods].sort((a, b) => b.qty - a.qty).slice(0, 5);
+            const byRev = [...prods].sort((a, b) => b.rev - a.rev).slice(0, 5);
+
+            if (byQty.length > 0) {
+                document.getElementById('topSellers').innerHTML = byQty.map((p, i) => `
+                    <div class="product-item">
+                        <div class="product-rank">${i + 1}</div>
+                        <div class="product-details">
+                            <div class="product-name">${esc(p.name)}</div>
+                            <div class="product-meta">${p.qty} units sold</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            if (byRev.length > 0) {
+                document.getElementById('topRevenue').innerHTML = byRev.map((p, i) => `
+                    <div class="product-item">
+                        <div class="product-rank">${i + 1}</div>
+                        <div class="product-details">
+                            <div class="product-name">${esc(p.name)}</div>
+                            <div class="product-meta">LKR ${fmtNum(p.rev)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function renderTable() {
+            const container = document.getElementById('salesTable');
+            document.getElementById('tableCount').textContent = `${filtered.length} records`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📊</div>
+                        <p>No sales data available.<br>Export an invoice to record sales.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <table class="sales-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>Items</th>
+                            <th style="text-align:right">Amount</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            filtered.forEach(s => {
+                const itemCnt = s.items.reduce((a, i) => a + i.qty, 0);
+                const preview = s.items.slice(0, 2).map(i => i.name).join(', ');
+
+                html += `
+                    <tr>
+                        <td class="sale-id" data-label="ID">#${s.id}</td>
+                        <td class="sale-datetime" data-label="Date">
+                            ${fmtDate(s.date)}
+                            <span class="sale-time">${fmtTime(s.date)}</span>
+                        </td>
+                        <td class="sale-items" data-label="Items">
+                            <span class="items-badge">${itemCnt} item${itemCnt !== 1 ? 's' : ''}</span>
+                            <div class="items-list">${esc(preview)}${s.items.length > 2 ? '...' : ''}</div>
+                            <span class="items-toggle" onclick="toggle(${s.id})">Details</span>
+                            <div class="items-detail" id="detail-${s.id}">
+                                <ul>
+                                    ${s.items.map(i => `<li>${esc(i.name)} × ${i.qty} = LKR ${(i.total || 0).toFixed(2)}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </td>
+                        <td class="sale-amount" data-label="Amount">
+                            LKR ${s.subtotal.toFixed(2)}
+                            <span class="sale-profit">+${s.profit.toFixed(2)} profit</span>
+                        </td>
+                        <td data-label="">
+                            <button class="btn-delete" onclick="del(${s.id})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function toggle(id) {
+            document.getElementById(`detail-${id}`).classList.toggle('show');
+        }
+
+        async function del(id) {
+            if (!confirm('Delete this sale?')) return;
+            try {
+                await fetch(`/api/sales/${id}`, { method: 'DELETE' });
+                loadData();
+            } catch (e) {
+                alert('Error');
+            }
+        }
+
+        // Utilities
+        function fmtNum(n) { return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+        function fmtK(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'K' : n.toFixed(0); }
+        function fmtDate(d) { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
+        function fmtTime(d) { return new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }); }
+        function fmtShort(d) { return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }); }
+        function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    </script>
+</body>
+
+</html>

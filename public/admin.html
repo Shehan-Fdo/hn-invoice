@@ -123,6 +123,7 @@
     <div class="nav">
         <a href="/">Create Invoice</a>
         <a href="/admin.html">Manage Products</a>
+        <a href="/sales.html">Sales History</a>
     </div>
 
     <div class="invoice-box">
@@ -154,6 +155,13 @@
 
     <script>
         let allProducts = [];
+
+        // Utility function to escape HTML and prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
         // Load products on page load
         window.addEventListener('load', () => {
@@ -237,15 +245,16 @@
             `;
 
             allProducts.forEach(product => {
-                const profit = product.sellingPrice - product.buyingPrice;
-                const profitPercent = ((profit / product.buyingPrice) * 100).toFixed(1);
+                const buyingPrice = product.buyingPrice || 0;
+                const profit = product.sellingPrice - buyingPrice;
+                const profitPercent = buyingPrice > 0 ? ((profit / buyingPrice) * 100).toFixed(1) : 'N/A';
 
                 html += `
                     <tr id="row-${product.id}">
-                        <td class="col-name">${product.name}</td>
-                        <td class="col-buy">LKR ${product.buyingPrice.toFixed(2)}</td>
+                        <td class="col-name">${escapeHtml(product.name)}</td>
+                        <td class="col-buy">LKR ${buyingPrice.toFixed(2)}</td>
                         <td class="col-sell">LKR ${product.sellingPrice.toFixed(2)}</td>
-                        <td>LKR ${profit.toFixed(2)} (${profitPercent}%)</td>
+                        <td>LKR ${profit.toFixed(2)} (${profitPercent}${profitPercent !== 'N/A' ? '%' : ''})</td>
                         <td>
                             <button class="btn-edit" style="background-color:white; color:black; border: 1px solid black" onclick="editProduct('${product.id}')">Edit</button>
                             <button class="btn-delete" style="background-color:white; color:black; border: 1px solid red" onclick="deleteProduct('${product.id}', '${product.name}')">Delete</button>
@@ -269,8 +278,8 @@
 
             row.classList.add('edit-mode');
             row.innerHTML = `
-                <td><input type="text" id="edit-name-${id}" value="${product.name}"></td>
-                <td><input type="number" id="edit-buy-${id}" value="${product.buyingPrice}" step="0.01"></td>
+                <td><input type="text" id="edit-name-${id}" value="${escapeHtml(product.name)}"></td>
+                <td><input type="number" id="edit-buy-${id}" value="${product.buyingPrice || 0}" step="0.01"></td>
                 <td><input type="number" id="edit-sell-${id}" value="${product.sellingPrice}" step="0.01"></td>
                 <td>-</td>
                 <td>
