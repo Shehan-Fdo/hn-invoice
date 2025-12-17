@@ -114,6 +114,11 @@ app.delete('/api/products/:id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+// Export the app for Vercel serverless
+module.exports = app;
 
-const PORT = 3000;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+// Only start the server locally (not on Vercel)
+if (!process.env.VERCEL) {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+}

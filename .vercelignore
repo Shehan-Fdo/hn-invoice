@@ -1,0 +1,20 @@
+# Dependencies
+node_modules
+
+# Development files
+.env.local
+.env.development
+verify_fix.js
+seed.js
+products.json
+
+# IDE
+.vscode
+.idea
+
+# Logs
+*.log
+npm-debug.log*
+
+# Drizzle dev files
+drizzle.config.js
