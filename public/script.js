@@ -324,89 +324,110 @@ function exportImage() {
     }, 100);
 }
 
-// Export POS Receipt (58mm width thermal printer format)
+// Export POS Receipt (58mm width thermal printer format) using pdfmake
 function exportPOS() {
     if (invoiceItems.length === 0) {
         alert('Please add items to the invoice first.');
         return;
     }
 
-    // Create a temporary container for the receipt
-    const receiptDiv = document.createElement('div');
-    receiptDiv.id = 'pos-receipt';
-
-    // Receipt styling (inline for simplicity in generation)
-    receiptDiv.style.width = '58mm'; // Standard thermal width
-    receiptDiv.style.background = '#fff';
-    receiptDiv.style.fontFamily = 'monospace';
-    receiptDiv.style.fontSize = '12px';
-    receiptDiv.style.padding = '5px';
-    receiptDiv.style.color = '#000';
-
-    // Calculate total
     const subTotal = invoiceItems.reduce((sum, item) => sum + (item.sellingPrice * item.qty), 0);
+    const dateStr = new Date().toLocaleString();
 
-    // Build Receipt HTML
-    let html = `
-        <div style="text-align: center; margin-bottom: 10px;">
-            <h2 style="margin: 0; font-size: 1.2em;">HN Electronics</h2>
-            <p style="margin: 2px 0;">Tel: 078 663 7512</p>
-            <p style="margin: 2px 0;">${new Date().toLocaleString()}</p>
-        </div>
-        <hr style="border-top: 1px dashed black;">
-        <div style="width: 100%;">
-    `;
+    // Define table body dynamically
+    const tableBody = [];
 
-    // Add Items
+    // items
     invoiceItems.forEach(item => {
-        html += `
-            <div style="margin-bottom: 5px;">
-                <div style="font-weight: bold;">${escapeHtml(item.name)}</div>
-                <div style="display: flex; justify-content: space-between;">
-                    <span>${item.qty} x ${item.sellingPrice.toFixed(2)}</span>
-                    <span>${(item.qty * item.sellingPrice).toFixed(2)}</span>
-                </div>
-            </div>
-        `;
+        tableBody.push([
+            { text: item.name, style: 'item', colSpan: 2 }, {}
+        ]);
+        tableBody.push([
+            { text: `${item.qty} x ${item.sellingPrice.toFixed(2)}`, style: 'itemDetail' },
+            { text: (item.qty * item.sellingPrice).toFixed(2), style: 'itemPrice', alignment: 'right' }
+        ]);
     });
 
-    // Add Totals & Footer
-    html += `
-        </div>
-        <hr style="border-top: 1px dashed black;">
-        <div style="display: flex; justify-content: space-between; font-weight: bold; margin: 10px 0;">
-            <span>TOTAL:</span>
-            <span>LKR ${subTotal.toFixed(2)}</span>
-        </div>
-        <hr style="border-top: 1px dashed black;">
-        <div style="text-align: center; margin-top: 10px;">
-            <p style="margin: 0;">Thank you!</p>
-            <p style="margin: 5px 0;">Come Again</p>
-        </div>
-    `;
+    // Document Definition for pdfmake
+    const docDefinition = {
+        pageSize: { width: 164, height: 'auto' }, // ~58mm width
+        pageMargins: [4, 4, 4, 4], // Minimal margins
+        content: [
+            { text: 'HN Electronics', style: 'header', alignment: 'center' },
+            { text: 'Tel: 078 663 7512', style: 'subheader', alignment: 'center' },
+            { text: dateStr, style: 'subheader', alignment: 'center', margin: [0, 0, 0, 5] },
 
-    receiptDiv.innerHTML = html;
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 156, y2: 0, lineWidth: 1, dash: { length: 2 } }] },
+            { text: ' ', fontSize: 2 }, // Spacer
 
-    // Append temporarily to body (hidden) to render
-    // logic needs it in DOM for some libs, but html2pdf works with element passed.
-    // However, html2pdf needs it rendered to calculate height properly if auto.
+            ...tableBody.flat().map((row, index) => {
+                // The flat() above is a bit tricky with how I built tableBody. 
+                // Actually pdfmake handles stacks. Let's do a vertical stack for items instead of a table 
+                // to completely control the narrow layout validation.
+                return null;
+            }).filter(x => x), // Clean up if I change mind. 
 
-    // Options for 58mm width. 
-    // mm units. format [58, height] -> height we can estimate or let it auto if supported, 
-    // but jsPDF 'format' usually needs rigid numbers or an array. 
-    // Let's guess a long height or allow page-break (though receipts are usually continuous).
-    // Better strategy for receipt: one long page.
-
-    const opt = {
-        margin: 1, // mm
-        filename: `Receipt_${new Date().toISOString().slice(0, 10)}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 3, useCORS: true },
-        jsPDF: { unit: 'mm', format: [58, 200] } // 58mm width, 200mm height (adjustable)
+            // Let's stick to a simple stack approach, it's safer for receipts than tables which might overflow
+        ],
+        styles: {
+            header: { fontSize: 10, bold: true },
+            subheader: { fontSize: 8 },
+            item: { fontSize: 8, bold: true, margin: [0, 2, 0, 0] },
+            itemDetail: { fontSize: 8, margin: [0, 0, 0, 2] },
+            itemPrice: { fontSize: 8, bold: true, margin: [0, 0, 0, 2] },
+            totalLabel: { fontSize: 9, bold: true },
+            totalValue: { fontSize: 9, bold: true },
+            footer: { fontSize: 8, italics: true }
+        },
+        defaultStyle: {
+            font: 'Roboto'
+        }
     };
 
-    // We can use html2pdf().from(string) or element.
-    html2pdf().set(opt).from(receiptDiv).save().then(() => {
+    // Re-build content array cleanly
+    const content = [];
+
+    // Header
+    content.push({ text: 'HN Electronics', style: 'header', alignment: 'center' });
+    content.push({ text: 'Tel: 078 663 7512', style: 'subheader', alignment: 'center' });
+    content.push({ text: dateStr, style: 'subheader', alignment: 'center', margin: [0, 0, 0, 5] });
+    content.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 155, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] });
+    content.push({ text: ' ', fontSize: 4 });
+
+    // Items
+    invoiceItems.forEach(item => {
+        content.push({ text: item.name, style: 'item' });
+        content.push({
+            columns: [
+                { text: `${item.qty} x ${item.sellingPrice.toFixed(2)}`, style: 'itemDetail', width: '*' },
+                { text: (item.qty * item.sellingPrice).toFixed(2), style: 'itemPrice', width: 'auto', alignment: 'right' }
+            ]
+        });
+    });
+
+    content.push({ text: ' ', fontSize: 4 });
+    content.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 155, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] });
+    content.push({ text: ' ', fontSize: 4 });
+
+    // Total
+    content.push({
+        columns: [
+            { text: 'TOTAL:', style: 'totalLabel', width: '*' },
+            { text: `LKR ${subTotal.toFixed(2)}`, style: 'totalValue', width: 'auto', alignment: 'right' }
+        ]
+    });
+
+    content.push({ text: ' ', fontSize: 4 });
+    content.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 155, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] });
+
+    // Footer
+    content.push({ text: 'Thank you!', style: 'footer', alignment: 'center', margin: [0, 10, 0, 2] });
+    content.push({ text: 'Shop Again.', style: 'footer', alignment: 'center' });
+
+    docDefinition.content = content;
+
+    // Create and download
+    pdfMake.createPdf(docDefinition).download(`Receipt_${new Date().toISOString().slice(0, 10)}.pdf`, () => {
         // Prompt to save sale
         setTimeout(() => promptSaveSale(), 300);
     });
