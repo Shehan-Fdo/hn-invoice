@@ -137,10 +137,20 @@
 
         <hr>
 
-        <h2>Bulk Add (JSON)</h2>
+        <h2>Bulk Add</h2>
+
+        <!-- CSV Upload Section -->
+        <h3>Option 1: Upload CSV</h3>
+        <p>Upload a CSV file with columns: <code>name, buyingPrice, sellingPrice</code></p>
+        <input type="file" id="csvFile" accept=".csv" />
+        <button onclick="uploadCSV()">Upload CSV</button>
+        <br><br>
+
+        <!-- JSON Upload Section -->
+        <h3>Option 2: Paste JSON</h3>
         <p>Paste JSON array here (e.g. <code>[{"name": "X", "buyingPrice": 100, "sellingPrice": 150}]</code>)</p>
         <textarea id="bulkJson" style="width:100%; height:150px;"></textarea><br>
-        <button onclick="bulkUpload()">Upload Bulk</button>
+        <button onclick="bulkUpload()">Upload JSON</button>
 
         <hr>
 
@@ -191,20 +201,89 @@
             }
         });
 
-        // Bulk Upload
+        // Bulk Upload CSV
+        async function uploadCSV() {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a CSV file first.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async function (e) {
+                const text = e.target.result;
+                const lines = text.split('\n');
+                const products = [];
+
+                // Assuming first line might be header, so we check content
+                // If the first line contains "name" or "price", skip it
+                let startIndex = 0;
+                if (lines[0].toLowerCase().includes('name') && lines[0].toLowerCase().includes('price')) {
+                    startIndex = 1;
+                }
+
+                for (let i = startIndex; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+
+                    const [name, buyingPrice, sellingPrice] = line.split(',');
+
+                    if (name && buyingPrice && sellingPrice) {
+                        products.push({
+                            name: name.trim(),
+                            buyingPrice: parseFloat(buyingPrice.trim()),
+                            sellingPrice: parseFloat(sellingPrice.trim())
+                        });
+                    }
+                }
+
+                if (products.length === 0) {
+                    alert('❌ No valid products found in CSV.');
+                    return;
+                }
+
+                await sendBulkData(products);
+                fileInput.value = ''; // Clear input
+            };
+            reader.readAsText(file);
+        }
+
+        // Bulk Upload JSON
         async function bulkUpload() {
             try {
-                const json = JSON.parse(document.getElementById('bulkJson').value);
-                await fetch('/api/products/bulk', {
+                const jsonContent = document.getElementById('bulkJson').value;
+                if (!jsonContent.trim()) {
+                    alert('Please paste some JSON first.');
+                    return;
+                }
+                const json = JSON.parse(jsonContent);
+                await sendBulkData(json);
+                document.getElementById('bulkJson').value = '';
+            } catch (err) {
+                alert('❌ Invalid JSON format: ' + err.message);
+            }
+        }
+
+        // Shared function for sending bulk data
+        async function sendBulkData(data) {
+            try {
+                const res = await fetch('/api/products/bulk', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(json)
+                    body: JSON.stringify(data)
                 });
-                alert('✅ Bulk upload successful!');
-                document.getElementById('bulkJson').value = '';
+
+                if (!res.ok) {
+                    throw new Error(await res.text() || 'Server error');
+                }
+
+                alert(`✅ Successfully added ${data.length} products!`);
                 loadProducts(); // Reload the list
             } catch (err) {
-                alert('❌ Invalid JSON format');
+                console.error(err);
+                alert('❌ Upload failed: ' + err.message);
             }
         }
 
