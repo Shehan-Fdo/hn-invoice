@@ -35,7 +35,48 @@ function loadFromLocal() {
 }
 
 // Load saved data on startup
-window.addEventListener('DOMContentLoaded', loadFromLocal);
+// Load saved data on startup
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('orderId');
+
+    if (orderId) {
+        // Edit Mode
+        loadOrderForEdit(orderId);
+    } else {
+        // Normal Mode
+        loadFromLocal();
+    }
+});
+
+let currentOrderId = null; // Track if we are editing
+
+async function loadOrderForEdit(id) {
+    try {
+        const res = await fetch(`/api/sales/${id}`);
+        if (!res.ok) throw new Error('Order not found');
+
+        const order = await res.json();
+        currentOrderId = order.id;
+        // Map DB 'price' back to 'sellingPrice' for frontend compatibility
+        invoiceItems = order.items.map(i => ({
+            ...i,
+            sellingPrice: i.price !== undefined ? i.price : i.sellingPrice,
+            buyingPrice: i.buyingPrice || 0 // Ensure this exists
+        }));
+
+        // Show indicator
+        const header = document.querySelector('.header div:last-child');
+        const statusBadge = document.createElement('div');
+        statusBadge.innerHTML = `<span style="background:${order.status === 'draft' ? '#ff9800' : '#4caf50'}; color:white; padding:4px 8px; border-radius:4px; font-size:0.8em; font-weight:bold;">${order.status.toUpperCase()} (ID: ${order.id})</span>`;
+        if (header) header.prepend(statusBadge);
+
+        renderTable();
+    } catch (e) {
+        console.error(e);
+        alert('Could not load order for editing');
+    }
+}
 
 // Search Logic
 searchInput.addEventListener('input', async (e) => {
@@ -138,8 +179,8 @@ function renderTable() {
     document.getElementById('totalProfit').innerText = totalProfit.toFixed(2);
 }
 
-// Save sale to database
-async function saveSale() {
+// Save sale to database (Modified for Edit/Draft)
+async function saveSale(status = 'completed') {
     if (invoiceItems.length === 0) {
         return false;
     }
@@ -150,20 +191,36 @@ async function saveSale() {
         return sum + ((item.sellingPrice - buyingPrice) * item.qty);
     }, 0);
 
+    const payload = {
+        items: invoiceItems.map(item => ({
+            name: item.name,
+            qty: item.qty,
+            price: item.sellingPrice,
+            total: item.sellingPrice * item.qty,
+            // Preserve other fields if needed, but for DB storage that's usually enough
+            // Note: If buyingPrice is needed for future profit calcs on re-edit, it should be in items array. 
+            // The Schema currently stores a JSON string.
+            buyingPrice: item.buyingPrice, // Added to ensure profit calc works on re-edit
+            id: item.id
+        })),
+        subtotal: subtotal,
+        profit: profit,
+        status: status
+    };
+
     try {
-        const response = await fetch('/api/sales', {
-            method: 'POST',
+        let url = '/api/sales';
+        let method = 'POST';
+
+        if (currentOrderId) {
+            url = `/api/sales/${currentOrderId}`;
+            method = 'PUT';
+        }
+
+        const response = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                items: invoiceItems.map(item => ({
-                    name: item.name,
-                    qty: item.qty,
-                    price: item.sellingPrice,
-                    total: item.sellingPrice * item.qty
-                })),
-                subtotal: subtotal,
-                profit: profit
-            })
+            body: JSON.stringify(payload)
         });
 
         if (response.ok) {
@@ -173,6 +230,26 @@ async function saveSale() {
     } catch (error) {
         console.error('Error saving sale:', error);
         return false;
+    }
+}
+
+// Explicit Save Draft Button
+async function saveDraft() {
+    const success = await saveSale('draft');
+    if (success) {
+        alert('✅ Draft saved successfully!');
+        if (!currentOrderId) {
+            // If it was a new draft, maybe clear or redirect?
+            // For now, let's just clear
+            invoiceItems = [];
+            saveToLocal();
+            renderTable();
+        } else {
+            // If editing, maybe stay on page?
+            // Reload to verify or just stay
+        }
+    } else {
+        alert('❌ Failed to save draft.');
     }
 }
 
@@ -186,6 +263,7 @@ function promptSaveSale() {
                 alert('✅ Sale saved to records!');
                 // Clear the invoice
                 invoiceItems = [];
+                currentOrderId = null; // Reset edit mode
                 saveToLocal(); // Clear storage
                 renderTable();
             } else {

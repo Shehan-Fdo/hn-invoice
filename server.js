@@ -130,7 +130,8 @@ app.post('/api/sales', async (req, res) => {
         await db.insert(sales).values({
             items: JSON.stringify(items),
             subtotal: String(subtotal),
-            profit: String(profit || 0)
+            profit: String(profit || 0),
+            status: req.body.status || 'completed'
         });
 
         res.json({ message: 'Sale saved successfully' });
@@ -153,6 +154,50 @@ app.get('/api/sales', async (req, res) => {
         }));
 
         res.json(formatted);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 8.1 Get single sale by ID
+app.get('/api/sales/:id', async (req, res) => {
+    try {
+        const result = await db.select().from(sales).where(eq(sales.id, Number(req.params.id)));
+
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'Sale not found' });
+        }
+
+        const sale = result[0];
+        const formatted = {
+            ...sale,
+            items: JSON.parse(sale.items),
+            subtotal: Number(sale.subtotal),
+            profit: Number(sale.profit)
+        };
+
+        res.json(formatted);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// 8.2 Update sale (for edits and drafts)
+app.put('/api/sales/:id', async (req, res) => {
+    try {
+        const { items, subtotal, profit, status } = req.body;
+
+        await db.update(sales)
+            .set({
+                items: JSON.stringify(items),
+                subtotal: String(subtotal),
+                profit: String(profit || 0),
+                status: status || 'completed' // Default to completed if not specified
+            })
+            .where(eq(sales.id, Number(req.params.id)));
+
+        res.json({ message: 'Sale updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

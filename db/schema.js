@@ -13,6 +13,7 @@ const sales = pgTable("sales", {
     items: text("items").notNull(), // JSON string of invoice items
     subtotal: numeric("subtotal").notNull(),
     profit: numeric("profit").notNull(),
+    status: text("status").default('completed').notNull(), // 'completed' or 'draft'
 });
 
 module.exports = { products, sales };

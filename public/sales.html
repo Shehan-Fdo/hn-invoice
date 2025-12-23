@@ -730,6 +730,11 @@
                 <input type="date" id="startDate">
                 <span style="color: #888;">→</span>
                 <input type="date" id="endDate">
+                <select id="statusFilter" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="all">All</option>
+                    <option value="completed">Completed</option>
+                    <option value="draft">Drafts</option>
+                </select>
                 <button onclick="applyFilter()">Apply</button>
                 <button onclick="clearFilter()" style="background: #666;">Reset</button>
             </div>
@@ -849,6 +854,7 @@
     <script>
         let allSales = [];
         let filtered = [];
+        let currentStatusFilter = 'all';
 
         window.addEventListener('load', () => {
             const today = new Date();
@@ -880,18 +886,28 @@
         }
 
         function applyFilter() {
-            const start = new Date(document.getElementById('startDate').value);
-            const end = new Date(document.getElementById('endDate').value);
+            const startStr = document.getElementById('startDate').value;
+            const endStr = document.getElementById('endDate').value;
+            const statusFn = document.getElementById('statusFilter').value;
+
+            // If dates are invalid, maybe just ignore date filter?
+            // But let's keep existing logic safe
+            let start = startStr ? new Date(startStr) : new Date(0); // Epoch if empty
+            let end = endStr ? new Date(endStr) : new Date();
+
             start.setHours(0, 0, 0, 0);
             end.setHours(23, 59, 59, 999);
 
             filtered = allSales.filter(s => {
                 const d = new Date(s.date);
-                return d >= start && d <= end;
+                const dateMatch = d >= start && d <= end;
+                const status = s.status || 'completed'; // Default behavior
+                const statusMatch = statusFn === 'all' ? true : status === statusFn;
+                return dateMatch && statusMatch;
             });
 
             document.getElementById('salesPeriod').textContent =
-                `${fmtShort(start)} - ${fmtShort(end)}`;
+                startStr && endStr ? `${fmtShort(start)} - ${fmtShort(end)}` : 'Filtered';
             render();
         }
 
@@ -1100,10 +1116,15 @@
             filtered.forEach(s => {
                 const itemCnt = s.items.reduce((a, i) => a + i.qty, 0);
                 const preview = s.items.slice(0, 2).map(i => i.name).join(', ');
+                const status = s.status || 'completed';
+                const isDraft = status === 'draft';
+                const statusBadge = isDraft
+                    ? `<span style="background:#ff9800; color:white; padding:2px 6px; border-radius:4px; font-size:0.7em; margin-right:5px;">DRAFT</span>`
+                    : ``;
 
                 html += `
                     <tr>
-                        <td class="sale-id" data-label="ID">#${s.id}</td>
+                        <td class="sale-id" data-label="ID">${statusBadge}#${s.id}</td>
                         <td class="sale-datetime" data-label="Date">
                             ${fmtDate(s.date)}
                             <span class="sale-time">${fmtTime(s.date)}</span>
@@ -1123,6 +1144,7 @@
                             <span class="sale-profit">+${s.profit.toFixed(2)} profit</span>
                         </td>
                         <td data-label="">
+                            <button class="btn-delete" style="background:#2196F3; color:white; border:none; margin-right:5px;" onclick="location.href='/index.html?orderId=${s.id}'">Edit</button>
                             <button class="btn-delete" onclick="del(${s.id})">Delete</button>
                         </td>
                     </tr>
