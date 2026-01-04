@@ -746,8 +746,8 @@
     <div id="toast-container"></div>
     <div class="nav">
         <a href="/">Create Invoice</a>
-        <a href="/admin.html">Manage Products</a>
-        <a href="/sales.html">Sales History</a>
+        <a href="/admin">Manage Products</a>
+        <a href="/sales">Sales History</a>
     </div>
 
     <div class="dashboard-container">
@@ -1346,7 +1346,7 @@
                             <span class="sale-profit">+${s.profit.toFixed(2)} profit</span>
                         </td>
                         <td data-label="">
-                            <button class="btn-delete" style="background:#2196F3; color:white; border:none; margin-right:5px;" onclick="location.href='/index.html?orderId=${s.id}'">Edit</button>
+                            <button class="btn-delete" style="background:#2196F3; color:white; border:none; margin-right:5px;" onclick="location.href='/?orderId=${s.id}'">Edit</button>
                             <button class="btn-delete" onclick="del(${s.id})">Delete</button>
                         </td>
                     </tr>

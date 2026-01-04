@@ -10,7 +10,7 @@ const { eq, ilike, desc, asc } = require('drizzle-orm');
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
-app.use(express.static(path.join(__dirname, 'public'))); // Serve HTML files
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] })); // Serve HTML files with extensionless support
 
 // Request Logger Middleware
 app.use((req, res, next) => {
