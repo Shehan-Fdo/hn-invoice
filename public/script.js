@@ -12,7 +12,64 @@ function escapeHtml(text) {
 const searchInput = document.getElementById('productSearch');
 const resultsBox = document.getElementById('searchResults');
 const tableBody = document.querySelector('#invoiceTable tbody');
+
+
 let invoiceItems = [];
+
+// Toast Notification System
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()" style="background:none;border:none;color:white;cursor:pointer;">&times;</button>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.add('hiding');
+        toast.addEventListener('animationend', () => toast.remove());
+    }, 3000);
+}
+
+// Custom Confirm Modal
+function showConfirm(message) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.id = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal-box">
+                <div class="modal-message">${message.replace(/\n/g, '<br>')}</div>
+                <div class="modal-buttons">
+                    <button class="btn-modal btn-cancel">No</button>
+                    <button class="btn-modal btn-confirm">Yes</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const confirmBtn = overlay.querySelector('.btn-confirm');
+        const cancelBtn = overlay.querySelector('.btn-cancel');
+
+        function close(result) {
+            overlay.remove();
+            resolve(result);
+        }
+
+        confirmBtn.onclick = () => close(true);
+        cancelBtn.onclick = () => close(false);
+        overlay.onclick = (e) => {
+            if (e.target === overlay) close(false);
+        };
+    });
+}
+
 
 // --- Auto-Save Logic ---
 const STORAGE_KEY = 'HN_INVOICE_ITEMS';
@@ -151,6 +208,19 @@ function removeItem(id) {
     renderTable();
 }
 
+function updatePrice(id, newPrice) {
+    const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+    const item = invoiceItems.find(i => i.id === numericId);
+    if (item) {
+        const price = parseFloat(newPrice);
+        if (!isNaN(price) && price >= 0) {
+            item.sellingPrice = price;
+            saveToLocal(); // Auto-save
+            renderTable();
+        }
+    }
+}
+
 function renderTable() {
     tableBody.innerHTML = '';
     let subTotal = 0;
@@ -166,9 +236,9 @@ function renderTable() {
         const row = `
             <tr>
                 <td>${escapeHtml(item.name)}</td>
-                <td>${item.sellingPrice}</td>
-                <td><input type="number" value="${item.qty}" onchange="updateQty('${item.id}', this.value)" style="width: 50px;"></td>
-                <td>${total}</td>
+                <td><input type="number" value="${item.sellingPrice}" onchange="updatePrice('${item.id}', this.value)" style="width: 80px; padding: 4px;"></td>
+                <td><input type="number" value="${item.qty}" onchange="updateQty('${item.id}', this.value)" style="width: 50px; padding: 4px;"></td>
+                <td>${total.toFixed(2)}</td>
                 <td class="no-print"><button onclick="removeItem('${item.id}')" style="background:white; color:black; padding:5px;">X</button></td>
             </tr>
         `;
@@ -237,7 +307,7 @@ async function saveSale(status = 'completed') {
 async function saveDraft() {
     const success = await saveSale('draft');
     if (success) {
-        alert('✅ Draft saved successfully!');
+        showToast('✅ Draft saved successfully!', 'success');
         if (!currentOrderId) {
             // If it was a new draft, maybe clear or redirect?
             // For now, let's just clear
@@ -249,18 +319,19 @@ async function saveDraft() {
             // Reload to verify or just stay
         }
     } else {
-        alert('❌ Failed to save draft.');
+        showToast('❌ Failed to save draft.', 'error');
     }
 }
 
 // Prompt to save sale after export
-function promptSaveSale() {
+async function promptSaveSale() {
     if (invoiceItems.length === 0) return;
 
-    if (confirm('✅ Export complete!\n\nAdd this invoice to sales records?')) {
+    const confirmed = await showConfirm('✅ Export complete!\n\nAdd this invoice to sales records?');
+    if (confirmed) {
         saveSale().then(success => {
             if (success) {
-                alert('✅ Sale saved to records!');
+                showToast('✅ Sale saved to records!', 'success');
                 // Clear the invoice
                 invoiceItems = [];
                 currentOrderId = null; // Reset edit mode
@@ -273,77 +344,140 @@ function promptSaveSale() {
     }
 }
 
-// Export PDF - renders as professional document
+// Export PDF - renders as professional document using pdfmake (A4)
 function exportPDF() {
     if (invoiceItems.length === 0) {
-        alert('Please add items to the invoice first.');
+        showToast('Please add items to the invoice first.', 'error');
         return;
     }
 
-    const element = document.getElementById('invoice-area');
+    const subTotal = invoiceItems.reduce((sum, item) => sum + (item.sellingPrice * item.qty), 0);
+    const dateStr = new Date().toLocaleDateString();
+    const timeStr = new Date().toLocaleTimeString();
 
-    // Hide all web UI elements
-    const noPrintElements = document.querySelectorAll('.no-print');
-    const controls = document.querySelector('.controls');
-    const actions = document.querySelector('.actions');
-    const nav = document.querySelector('.nav');
+    // Table Content
+    const tableBody = [
+        [
+            { text: 'Item Description', style: 'tableHeader' },
+            { text: 'Price (LKR)', style: 'tableHeader', alignment: 'right' },
+            { text: 'Qty', style: 'tableHeader', alignment: 'center' },
+            { text: 'Total', style: 'tableHeader', alignment: 'right' }
+        ]
+    ];
 
-    noPrintElements.forEach(el => el.style.display = 'none');
-    if (controls) controls.style.display = 'none';
-    if (actions) actions.style.display = 'none';
-    if (nav) nav.style.display = 'none';
+    invoiceItems.forEach(item => {
+        tableBody.push([
+            { text: item.name, style: 'tableBody' },
+            { text: item.sellingPrice.toFixed(2), style: 'tableBody', alignment: 'right' },
+            { text: item.qty.toString(), style: 'tableBody', alignment: 'center' },
+            { text: (item.sellingPrice * item.qty).toFixed(2), style: 'tableBody', alignment: 'right' }
+        ]);
+    });
 
-    // Store original styles
-    const originalBg = document.body.style.background;
-    const originalPadding = document.body.style.padding;
-    const originalBoxShadow = element.style.boxShadow;
-
-    // Apply clean document styling
-    document.body.style.background = '#ffffff';
-    document.body.style.padding = '0';
-    element.style.boxShadow = 'none';
-
-    // Wait a bit for DOM to update before capturing
-    setTimeout(() => {
-        const opt = {
-            margin: 0.5,
-            filename: `HN_Electronics_Invoice_${new Date().toISOString().slice(0, 10)}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: {
-                scale: 3,
-                backgroundColor: '#ffffff',
-                logging: false,
-                useCORS: true
+    const docDefinition = {
+        pageSize: 'A4',
+        pageMargins: [40, 40, 40, 40],
+        content: [
+            // Header
+            {
+                columns: [
+                    {
+                        width: '*',
+                        stack: [
+                            { text: 'HN Electronics', style: 'header' },
+                            { text: 'Tel: 078 663 7512', style: 'subheader' }
+                        ]
+                    },
+                    {
+                        width: 'auto',
+                        stack: [
+                            { text: 'INVOICE', style: 'invoiceTitle', alignment: 'right' },
+                            {
+                                columns: [
+                                    { text: 'Date:', width: 'auto', style: 'metaLabel' },
+                                    { text: dateStr, width: 80, style: 'metaValue', alignment: 'right' }
+                                ],
+                                margin: [0, 5, 0, 0]
+                            },
+                            {
+                                columns: [
+                                    { text: 'Time:', width: 'auto', style: 'metaLabel' },
+                                    { text: timeStr, width: 80, style: 'metaValue', alignment: 'right' }
+                                ]
+                            }
+                        ]
+                    }
+                ]
             },
-            jsPDF: {
-                unit: 'in',
-                format: 'a4',
-                orientation: 'portrait'
+
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1 }], margin: [0, 20, 0, 20] },
+
+            // Table
+            {
+                table: {
+                    headerRows: 1,
+                    widths: ['*', 'auto', 'auto', 'auto'],
+                    body: tableBody
+                },
+                layout: 'lightHorizontalLines'
+            },
+
+            { text: ' ', margin: [0, 10] },
+
+            // Totals
+            {
+                columns: [
+                    { width: '*', text: '' },
+                    {
+                        width: 'auto',
+                        table: {
+                            widths: [100, 100],
+                            body: [
+                                [
+                                    { text: 'Subtotal:', style: 'totalLabel', alignment: 'right' },
+                                    { text: 'LKR ' + subTotal.toFixed(2), style: 'totalValue', alignment: 'right' }
+                                ]
+                            ]
+                        },
+                        layout: 'noBorders'
+                    }
+                ]
+            },
+
+            // Footer
+            {
+                text: 'Thank you for your business!',
+                style: 'footer',
+                alignment: 'center',
+                margin: [0, 50, 0, 0]
             }
-        };
+        ],
+        styles: {
+            header: { fontSize: 24, bold: true, margin: [0, 0, 0, 5] },
+            subheader: { fontSize: 12, color: '#555' },
+            invoiceTitle: { fontSize: 20, bold: true, color: '#333' },
+            metaLabel: { fontSize: 10, color: '#555', matchWidth: false },
+            metaValue: { fontSize: 10 },
+            tableHeader: { fontSize: 11, bold: true, color: 'white', fillColor: '#333', margin: [5, 5, 5, 5] },
+            tableBody: { fontSize: 10, margin: [5, 5, 5, 5] },
+            totalLabel: { fontSize: 12, bold: true },
+            totalValue: { fontSize: 12, bold: true },
+            footer: { fontSize: 10, italics: true, color: '#555' }
+        },
+        defaultStyle: {
+            font: 'Roboto'
+        }
+    };
 
-        html2pdf().set(opt).from(element).save().then(() => {
-            // Restore all elements
-            noPrintElements.forEach(el => el.style.display = '');
-            if (controls) controls.style.display = '';
-            if (actions) actions.style.display = '';
-            if (nav) nav.style.display = '';
-
-            // Restore original styles
-            document.body.style.background = originalBg;
-            document.body.style.padding = originalPadding;
-            element.style.boxShadow = originalBoxShadow;
-
-            // Prompt to save sale
-            setTimeout(() => promptSaveSale(), 300);
-        });
-    }, 100);
+    pdfMake.createPdf(docDefinition).download(`HN_Electronics_Invoice_${new Date().toISOString().slice(0, 10)}.pdf`, () => {
+        setTimeout(() => promptSaveSale(), 300);
+    });
 }
 
 // Export Image - renders as professional document
 function exportImage() {
     if (invoiceItems.length === 0) {
-        alert('Please add items to the invoice first.');
+        showToast('Please add items to the invoice first.', 'error');
         return;
     }
 
@@ -365,9 +499,10 @@ function exportImage() {
     const originalPadding = document.body.style.padding;
     const originalBoxShadow = element.style.boxShadow;
 
-    // Apply clean document styling
+    // Apply clean document styling and printing mode
     document.body.style.background = '#ffffff';
     document.body.style.padding = '0';
+    document.body.classList.add('printing-mode'); // Hide borders
     element.style.boxShadow = 'none';
 
     // Wait a bit for DOM to update before capturing
@@ -389,6 +524,7 @@ function exportImage() {
             // Restore original styles
             document.body.style.background = originalBg;
             document.body.style.padding = originalPadding;
+            document.body.classList.remove('printing-mode');
             element.style.boxShadow = originalBoxShadow;
 
             const link = document.createElement('a');
@@ -405,7 +541,7 @@ function exportImage() {
 // Export POS Receipt (58mm width thermal printer format) using pdfmake
 function exportPOS() {
     if (invoiceItems.length === 0) {
-        alert('Please add items to the invoice first.');
+        showToast('Please add items to the invoice first.', 'error');
         return;
     }
 
